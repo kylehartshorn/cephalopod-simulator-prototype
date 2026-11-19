@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Extinct Chambered Cephalopod Hydrostatic Simulation</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Three.js for 3D shell perspective and WebGL rendering -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- OrbitControls for Three.js -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+  <div id="app-container">
+    <!-- Header -->
+    <header id="app-header">
+      <div class="header-title-container">
+        <h1>Extinct Chambered Cephalopod Hydrostatic Simulation</h1>
+        <p class="header-subtitle">
+          Biomechanical & Hydrostatic Modeling of Ectocochleate Shell Buoyancy (Trueman 1941; Raup 1966; Westermann 1977; Saunders & Shapiro 1986; Peterman et al. 2020)
+        </p>
+      </div>
+      <div class="header-actions">
+        <button id="btn-pause-phys" class="btn btn-secondary" title="Pause or Resume the dynamic physics simulation">Pause</button>
+        <button id="btn-reset-all" class="btn btn-secondary" title="Reset all morphometric parameters and pose to defaults">Reset Defaults</button>
+        <button id="btn-reset-phys" class="btn btn-secondary" title="Reset shell position and velocity to hydrostatic equilibrium">Settle to Equilibrium</button>
+        <button id="btn-view-toggle" class="btn btn-primary" title="Toggle between 2D Sagittal Cross-Section and 3D WebGL Model">Switch to 3D View</button>
+      </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main id="workspace">
+      <!-- Control Panel Sidebar -->
+      <aside id="sidebar">
+        <!-- Presets -->
+        <section class="control-group">
+          <h2>Taxonomic Presets</h2>
+          <div class="preset-selector">
+            <label for="preset-select">Morphological Model:</label>
+            <select id="preset-select">
+              <option value="custom">-- Custom Morphology --</option>
+              <option value="endoceras">Endoceras (Orthocone, Ordovician)</option>
+              <option value="orthoceras" selected>Orthoceras (Orthocone, Silurian)</option>
+              <option value="cyrtoceras">Cyrtoceras (Cyrtocone, Silurian)</option>
+              <option value="gyronautilus">Gyronautilus (Gyrocone, Devonian)</option>
+              <option value="nautilus">Nautilus pompilius (Nautilocone, Extant)</option>
+              <option value="baculites">Baculites (Straight Ammonite, Cretaceous)</option>
+              <option value="dactylioceras">Dactylioceras (Planispiral Ammonite, Jurassic)</option>
+            </select>
+          </div>
+        </section>
+
+        <!-- Conch Morphology Controls -->
+        <section class="control-group">
+          <h2>Conch Morphology</h2>
+          
+          <div class="control-item">
+            <div class="label-row">
+              <label for="input-length">Shell Length (<i>L</i>):</label>
+              <span class="value-display" id="val-length">600 mm</span>
+            </div>
+            <input type="range" id="input-length" min="100" max="2000" step="10" value="600">
+          </div>
+
+          <div class="control-item">
+            <div class="label-row">
+              <label for="input-curvature">Shell Curvature (<i>C</i>):</label>
+              <span class="value-display" id="val-curvature">0.00 (Orthocone)</span>
+            </div>
+            <input type="range" id="input-curvature" min="0.0" max="1.0" step="0.01" value="0.0">
+            <div class="slider-ticks">
+              <span>Straight</span>
+              <span>Cyrtocone</span>
+              <span>Gyrocone</span>
+              <span>Coiled</span>
+            </div>
+          </div>
+
+          <div class="control-item">
+            <div class="label-row">
+              <label for="input-aperture-diam">Aperture Diameter (<i>D</i><sub>aperture</sub>):</label>
+              <span class="value-display" id="val-aperture-diam">80 mm</span>
+            </div>
+            <input type="range" id="input-aperture-diam" min="20" max="250" step="2" value="80">
+          </div>
+
+          <div class="control-item">
+            <div class="label-row">
+              <label for="input-living-length">Length of Widest Chamber (<i>L</i><sub>bc</sub>):</label>
+              <span class="value-display" id="val-living-length">180 mm</span>
+            </div>
+            <input type="range" id="input-living-length" min="30" max="600" step="5" value="180">
+          </div>
+        </section>
+
+        <!-- Septa and Wall Anatomy -->
+        <section class="control-group">
+          <h2>Shell Anatomy & Septa</h2>
+
+          <div class="control-item">
+            <div class="label-row">
+              <label for="input-shell-thickness">Shell Wall Thickness (<i>t</i><sub>shell</sub>):</label>
+              <span class="value-display" id="val-shell-thickness">2.0 mm</span>
+            </div>
+            <input type="range" id="input-shell-thickness" min="0.2" max="10.0" step="0.1" value="2.0">
+          </div>
+
+          <div class="control-item">
+            <div class="label-row">
+              <label for="input-septa-thickness">Septal Thickness (<i>t</i><sub>septum</sub>):</label>
+              <span class="value-display" id="val-septa-thickness">1.0 mm</span>
+            </div>
+            <input type="range" id="input-septa-thickness" min="0.1" max="5.0" step="0.1" value="1.0">
+          </div>
+
+          <div class="control-item">
+            <div class="label-row">
+              <label for="input-chamber-dist">Distance between Chambers (&Delta;<i>s</i>):</label>
+              <span class="value-display" id="val-chamber-dist">10 mm</span>
+            </div>
+            <input type="range" id="input-chamber-dist" min="3" max="50" step="1" value="10">
+          </div>
+        </section>
+
+        <!-- Siphuncular Morphology -->
+        <section class="control-group">
+          <h2>Siphuncular Morphology</h2>
+
+          <div class="control-item">
+            <div class="label-row">
+              <label for="input-siphuncle-diam">Siphuncle Diameter (<i>D</i><sub>siph</sub>):</label>
+              <span class="value-display" id="val-siphuncle-diam">10 mm</span>
+            </div>
+            <input type="range" id="input-siphuncle-diam" min="1" max="50" step="1" value="10">
+            <span class="field-hint">Inner conical tube running down phragmocone</span>
+          </div>
+
+          <div class="control-item">
+            <div class="label-row">
+              <label for="input-siphuncle-pos">Siphuncle Position:</label>
+              <span class="value-display" id="val-siphuncle-pos">50 % (Center)</span>
+            </div>
+            <input type="range" id="input-siphuncle-pos" min="0" max="100" step="1" value="50">
+            <div class="slider-ticks">
+              <span>0% Ventral</span>
+              <span>50% Center</span>
+              <span>100% Dorsal</span>
+            </div>
+            <span class="field-hint">0% = Ventral, 50% = Center, 100% = Dorsal</span>
+          </div>
+
+          <div class="control-item">
+            <div class="label-row">
+              <label for="input-siphuncle-density">Siphuncle Density (&rho;<sub>siph</sub>):</label>
+              <span class="value-display" id="val-siphuncle-density">2.70 g/cm³</span>
+            </div>
+            <input type="range" id="input-siphuncle-density" min="0.50" max="3.50" step="0.05" value="2.70">
+            <div class="checkbox-row" style="margin-top: 6px;">
+              <input type="checkbox" id="chk-sync-siph-density" checked>
+              <label for="chk-sync-siph-density" style="font-size: 0.76rem; color: var(--text-secondary);">Default/link to shell material density</label>
+            </div>
+            <span class="field-hint">Defaults to shell density; editable for calcified endocones</span>
+          </div>
+        </section>
+
+        <!-- Hyponome / Siphon Propulsion -->
+        <section class="control-group">
+          <h2>Hyponome &amp; Jet Propulsion</h2>
+
+          <div class="control-item">
+            <div class="label-row">
+              <label for="input-siphon-angle">Siphon Direction:</label>
+              <span class="value-display" id="val-siphon-angle">90° (Perpendicular)</span>
+            </div>
+            <input type="range" id="input-siphon-angle" min="0" max="180" step="1" value="90">
+            <div class="slider-ticks">
+              <span>0° Forward</span>
+              <span>90° Perpendicular</span>
+              <span>180° Backward</span>
+            </div>
+            <span class="field-hint">Angle of hyponome jet relative to shell axis at aperture</span>
+          </div>
+
+          <div class="control-item">
+            <div class="label-row">
+              <label for="input-siphon-force">Propulsive Force (<i>F</i><sub>jet</sub>):</label>
+              <span class="value-display" id="val-siphon-force">1.0 N</span>
+            </div>
+            <input type="range" id="input-siphon-force" min="0.1" max="20.0" step="0.1" value="1.0">
+            <span class="field-hint">Press <kbd>Space</kbd> to fire a jet impulse</span>
+          </div>
+        </section>
+
+        <!-- Density &amp; Ballast (Supplementary Weight) -->
+        <section class="control-group">
+          <h2>Densities & Supplementary Weight</h2>
+
+          <div class="control-item">
+            <div class="label-row">
+              <label for="input-shell-density">Shell Mineral Density (&rho;<sub>shell</sub>):</label>
+              <span class="value-display" id="val-shell-density">2.70 g/cm³</span>
+            </div>
+            <input type="range" id="input-shell-density" min="1.50" max="3.50" step="0.05" value="2.70">
+            <span class="field-hint">Calcite: 2.71 g/cm³; Aragonite: 2.93 g/cm³</span>
+          </div>
+
+          <div class="control-item">
+            <div class="label-row">
+              <label for="input-chamber-density">Chamber Matter Density (&rho;<sub>chamber</sub>):</label>
+              <span class="value-display" id="val-chamber-density">0.0012 g/cm³ (Standard Air)</span>
+            </div>
+            <input type="range" id="input-chamber-density" min="0.0001" max="1.050" step="0.0005" value="0.0012">
+            <div class="slider-ticks">
+              <span>Vacuum</span>
+              <span>Air/CO₂</span>
+              <span>Brine/Water</span>
+            </div>
+            <span class="field-hint">Air: 0.0012 g/cm³; CO₂: 0.00198 g/cm³; Water: 1.000 g/cm³</span>
+          </div>
+
+          <div class="control-item">
+            <div class="label-row">
+              <label for="input-weight-factor">Supplementary Weight Factor (<i>f</i><sub>body</sub>):</label>
+              <span class="value-display" id="val-weight-factor">1.00 (Soft Tissue ~1.05 g/cm³)</span>
+            </div>
+            <input type="range" id="input-weight-factor" min="0.00" max="2.50" step="0.05" value="1.00">
+            <span class="field-hint">Weight in widest chamber (soft visceral body & ballast)</span>
+          </div>
+
+          <div class="control-item">
+            <div class="label-row">
+              <label for="input-cameral-fluid">Cameral Fluid Retention:</label>
+              <span class="value-display" id="val-cameral-fluid">0 %</span>
+            </div>
+            <input type="range" id="input-cameral-fluid" min="0" max="100" step="5" value="0">
+            <span class="field-hint">Residual cameral brine in phragmocone</span>
+          </div>
+
+          <div class="control-item">
+            <div class="label-row">
+              <label for="select-water-density">Water Medium:</label>
+            </div>
+            <select id="select-water-density">
+              <option value="1.025" selected>Seawater (1.025 g/cm³ / 1025 kg/m³)</option>
+              <option value="1.000">Freshwater (1.000 g/cm³ / 1000 kg/m³)</option>
+            </select>
+          </div>
+        </section>
+
+        <!-- Physics & Display Options -->
+        <section class="control-group">
+          <h2>Simulation & Display Options</h2>
+          <div class="checkbox-row">
+            <input type="checkbox" id="chk-show-com" checked>
+            <label for="chk-show-com">Show Center of Mass (CoM / <i>G</i>)</label>
+          </div>
+          <div class="checkbox-row">
+            <input type="checkbox" id="chk-show-cob" checked>
+            <label for="chk-show-cob">Show Center of Buoyancy (CoB / <i>B</i>)</label>
+          </div>
+          <div class="checkbox-row">
+            <input type="checkbox" id="chk-show-moi" checked>
+            <label for="chk-show-moi">Show Moment of Inertia (Ellipsoid/Axes)</label>
+          </div>
+          <div class="checkbox-row">
+            <input type="checkbox" id="chk-show-forces" checked>
+            <label for="chk-show-forces">Show Interactive Drag & Restoring Vectors</label>
+          </div>
+          <div class="checkbox-row">
+            <input type="checkbox" id="chk-water-damping" checked>
+            <label for="chk-water-damping">Hydrodynamic Drag Damping</label>
+          </div>
+        </section>
+      </aside>
+
+      <!-- Viewport Area -->
+      <div id="viewport-container">
+        <!-- HUD / Metrics Banner -->
+        <div id="hud-metrics">
+          <div class="hud-card" id="card-status">
+            <span class="hud-label">Buoyancy Status</span>
+            <span class="hud-value status-badge" id="hud-status">Positive (Floats)</span>
+          </div>
+          <div class="hud-card">
+            <span class="hud-label">Floating Orientation (<i>&theta;</i><sub>eq</sub>)</span>
+            <span class="hud-value" id="hud-orientation">-18.4°</span>
+          </div>
+          <div class="hud-card">
+            <span class="hud-label">Center of Mass (<b>r</b><sub>G</sub>)</span>
+            <span class="hud-value" id="hud-com">X: 184 mm, Y: 12 mm</span>
+          </div>
+          <div class="hud-card">
+            <span class="hud-label">Center of Buoyancy (<b>r</b><sub>B</sub>)</span>
+            <span class="hud-value" id="hud-cob">X: 218 mm, Y: 26 mm</span>
+          </div>
+          <div class="hud-card">
+            <span class="hud-label">Separation / Stability (<i>S</i><sub>t</sub>)</span>
+            <span class="hud-value" id="hud-stability">36.5 mm (Stable)</span>
+          </div>
+          <div class="hud-card">
+            <span class="hud-label">Moment of Inertia (<i>I</i><sub>zz</sub>)</span>
+            <span class="hud-value" id="hud-moi">0.038 kg·m² (k=142mm)</span>
+          </div>
+          <div class="hud-card">
+            <span class="hud-label">Displacement / Mass</span>
+            <span class="hud-value" id="hud-mass">M: 1,890 g | F_B: 18.5 N</span>
+          </div>
+        </div>
+
+        <!-- Canvas Viewports -->
+        <div id="canvas-wrapper">
+          <!-- 2D Canvas for Sagittal Cross-Section & Drag Physics -->
+          <canvas id="sim-canvas-2d"></canvas>
+
+          <!-- 3D Three.js Container -->
+          <div id="sim-container-3d" style="display: none;"></div>
+
+          <!-- Interactive Force Overlay Banner -->
+          <div id="force-overlay" class="hidden">
+            <div class="force-readout">
+              <span class="force-title">User Applied Force:</span>
+              <span class="force-val" id="force-val">0.00 N (0 gf)</span>
+            </div>
+            <div class="force-readout">
+              <span class="force-title">Restoring Torque (<i>&tau;</i><sub>H</sub>):</span>
+              <span class="torque-val" id="torque-val">0.00 N·m</span>
+            </div>
+          </div>
+
+          <!-- Interaction Hint -->
+          <div id="interaction-hint">
+            <span class="hint-icon">👆</span>
+            <span>Click and drag on the shell to perturb it — or press <kbd>Space</kbd> to fire a hyponome jet impulse.</span>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer with citations -->
+    <footer id="app-footer">
+      <span>Extinct Ectocochleate Cephalopod Hydrostatic Simulator</span>
+      <span>•</span>
+      <span>References: <a href="https://doi.org/10.1144/GSL.JGS.1940.096.01-04.14" target="_blank" rel="noopener">Trueman (1941)</a> | <a href="https://www.jstor.org/stable/1301993" target="_blank" rel="noopener">Raup (1966)</a> | <a href="https://doi.org/10.1017/S0094837300005391" target="_blank" rel="noopener">Westermann (1977)</a> | <a href="https://doi.org/10.1017/S009483730000301X" target="_blank" rel="noopener">Saunders & Shapiro (1986)</a> | <a href="https://doi.org/10.1038/s41598-020-58118-6" target="_blank" rel="noopener">Peterman et al. (2020)</a></span>
+    </footer>
+  </div>
+
+  <script src="presets.js"></script>
+  <script src="cephalopod_sim.js"></script>
+</body>
+</html>
